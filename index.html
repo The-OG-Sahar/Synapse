@@ -941,6 +941,13 @@
         let currentQuestionIndex = 0;
         let score = 0;
         let selectedOption = null;
+        let answeredQuestions = [];
+        let documentContent = {
+            title: "",
+            topic: "",
+            keyPoints: [],
+            summary: ""
+        };
 
         // DOM elements
         const views = {
@@ -964,6 +971,91 @@
 
         // Initialize
         createParticles();
+
+        // Simulate document analysis based on file name
+        function analyzeDocument(fileName) {
+            // Extract topic from filename (simple simulation)
+            const topics = [
+                { name: "Machine Learning", keyPoints: ["supervised learning", "neural networks", "data preprocessing", "model evaluation"] },
+                { name: "Climate Change", keyPoints: ["greenhouse gases", "renewable energy", "carbon footprint", "global warming"] },
+                { name: "World History", keyPoints: ["ancient civilizations", "major wars", "cultural movements", "technological advances"] },
+                { name: "Biology", keyPoints: ["cell structure", "genetics", "evolution", "ecosystems"] },
+                { name: "Psychology", keyPoints: ["cognitive processes", "behavioral patterns", "mental health", "human development"] }
+            ];
+            
+            // Select topic based on filename (simple simulation)
+            const topicIndex = fileName.length % topics.length;
+            const selectedTopic = topics[topicIndex];
+            
+            documentContent = {
+                title: fileName,
+                topic: selectedTopic.name,
+                keyPoints: selectedTopic.keyPoints,
+                summary: `This document discusses important aspects of ${selectedTopic.name}, including ${selectedTopic.keyPoints.join(", ")}.`
+            };
+            
+            return documentContent;
+        }
+
+        // Quiz data with correct answers based on document content
+        function generateQuizData() {
+            const topic = documentContent.topic;
+            const keyPoints = documentContent.keyPoints;
+            
+            // Generate quiz questions based on document content
+            quizData = [
+                {
+                    question: `What is the main topic of the document?`,
+                    options: [
+                        "Machine Learning",
+                        "Climate Change", 
+                        "World History",
+                        topic
+                    ],
+                    correctAnswer: 3
+                },
+                {
+                    question: `Which of the following is NOT discussed in the document?`,
+                    options: [
+                        keyPoints[0],
+                        keyPoints[1],
+                        "Quantum Physics",
+                        keyPoints[2]
+                    ],
+                    correctAnswer: 2
+                },
+                {
+                    question: `According to the document, what is important about ${keyPoints[0]}?`,
+                    options: [
+                        "It's the foundation of the entire subject",
+                        "It's mentioned briefly as an aside",
+                        "It's completely irrelevant to the main topic",
+                        "It's only discussed in the appendix"
+                    ],
+                    correctAnswer: 0
+                },
+                {
+                    question: `What conclusion does the document reach about ${keyPoints[1]}?`,
+                    options: [
+                        "It needs more research",
+                        "It's a critical component",
+                        "It should be avoided",
+                        "It's controversial"
+                    ],
+                    correctAnswer: 1
+                },
+                {
+                    question: `What future direction does the document suggest for ${keyPoints[2]}?`,
+                    options: [
+                        "Discontinue all research",
+                        "Focus on practical applications",
+                        "Ignore the topic entirely",
+                        "Only theoretical study"
+                    ],
+                    correctAnswer: 1
+                }
+            ];
+        }
 
         // View switching
         function switchView(view) {
@@ -992,37 +1084,34 @@
         });
         navButtons.quiz.addEventListener('click', () => {
             if (uploadedDocument) {
-                if (quizData.length === 0) generateQuizData();
+                if (quizData.length === 0) {
+                    generateQuizData();
+                    resetQuiz();
+                }
                 switchView('quiz');
             }
         });
 
-        // File upload handling - FIXED VERSION
+        // File upload handling
         function initFileUpload() {
-            // Make the entire upload area clickable
             uploadArea.addEventListener('click', (e) => {
-                // Prevent triggering file input when clicking the button directly
                 if (e.target.id !== 'upload-btn') {
                     fileInput.click();
                 }
             });
 
-            // Handle button click separately
             uploadBtn.addEventListener('click', (e) => {
-                e.stopPropagation(); // Prevent event bubbling
+                e.stopPropagation();
                 fileInput.click();
             });
             
-            // Handle file selection
             fileInput.addEventListener('change', (e) => {
                 const file = e.target.files[0];
                 if (file) {
-                    console.log('File selected:', file.name); // Debug log
                     handleDocumentUploaded(file.name);
                 }
             });
 
-            // Drag and drop functionality
             uploadArea.addEventListener('dragover', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -1043,19 +1132,19 @@
                 const files = e.dataTransfer.files;
                 if (files.length > 0) {
                     const file = files[0];
-                    console.log('File dropped:', file.name); // Debug log
                     handleDocumentUploaded(file.name);
                 }
             });
         }
 
-        // Initialize file upload
         initFileUpload();
 
         // Handle document upload
         function handleDocumentUploaded(fileName) {
             uploadedDocument = fileName;
-            console.log('Document uploaded:', fileName); // Debug log
+            
+            // Analyze document content (simulated)
+            analyzeDocument(fileName);
             
             // Enable chat and quiz buttons
             navButtons.chat.disabled = false;
@@ -1067,6 +1156,7 @@
                     <div class="success-icon">✓</div>
                     <h3 style="font-size: 1.5rem; margin-bottom: 1rem;">Document Uploaded Successfully!</h3>
                     <p style="color: var(--text-muted); margin-bottom: 2rem;">${fileName}</p>
+                    <p style="color: var(--text-muted); margin-bottom: 2rem;">Topic: ${documentContent.topic}</p>
                     <button class="upload-btn" onclick="switchView('chat')">Start Chatting</button>
                 </div>
             `;
@@ -1100,74 +1190,46 @@
         }
 
         function generateAIResponse(message) {
-            const responses = [
-                "That's an excellent question! Based on your document, this concept is fundamental to understanding the main topic. The author emphasizes its importance in chapter 2.",
-                "I can see why you're asking about this. The document provides several examples that illustrate this concept perfectly. Let me explain the key points...",
-                "Great insight! This relates directly to the central theme of your document. The author uses this to build their main argument throughout the text.",
-                "Interesting question! According to your document, this has significant implications. The evidence presented in section 3 supports this conclusion.",
-                "You've identified a crucial point! The document suggests this is one of the most important takeaways. It's mentioned multiple times for emphasis.",
-                "Based on the context in your document, this concept helps tie everything together. The author uses it as a foundation for their analysis."
-            ];
+            const lowerMessage = message.toLowerCase();
+            const topic = documentContent.topic;
+            const keyPoints = documentContent.keyPoints;
             
-            return responses[Math.floor(Math.random() * responses.length)];
+            // Check for specific keywords in the user's message
+            if (lowerMessage.includes('what') && lowerMessage.includes('topic')) {
+                return `The main topic of this document is ${topic}. It covers several important areas including ${keyPoints.join(", ")}.`;
+            } else if (lowerMessage.includes('explain') || lowerMessage.includes('tell me')) {
+                if (lowerMessage.includes(keyPoints[0].toLowerCase())) {
+                    return `${keyPoints[0]} is a fundamental concept discussed in this document. It's explained as being essential to understanding ${topic}. The document provides several examples of how ${keyPoints[0]} works in practice.`;
+                } else if (lowerMessage.includes(keyPoints[1].toLowerCase())) {
+                    return `According to the document, ${keyPoints[1]} plays a crucial role in ${topic}. The author emphasizes that understanding ${keyPoints[1]} is key to mastering the subject.`;
+                } else if (lowerMessage.includes(keyPoints[2].toLowerCase())) {
+                    return `The document presents ${keyPoints[2]} as an important aspect of ${topic}. It discusses various approaches and techniques related to ${keyPoints[2]}.`;
+                } else if (lowerMessage.includes(keyPoints[3].toLowerCase())) {
+                    return `${keyPoints[3]} is covered extensively in this document. The author provides detailed explanations and real-world applications of ${keyPoints[3]} in the context of ${topic}.`;
+                } else {
+                    return `The document covers that topic in detail. It explains how it relates to ${topic} and provides several examples to help you understand the concept better.`;
+                }
+            } else if (lowerMessage.includes('summary')) {
+                return `This document discusses ${topic}, focusing on key areas like ${keyPoints[0]}, ${keyPoints[1]}, ${keyPoints[2]}, and ${keyPoints[3]}. The main takeaway is that these elements work together to create a comprehensive understanding of the subject.`;
+            } else if (lowerMessage.includes('important')) {
+                return `The most important points from this document are: 1) Understanding ${keyPoints[0]} as a foundation, 2) Mastering ${keyPoints[1]} for practical application, 3) Exploring ${keyPoints[2]} for deeper knowledge, and 4) Applying ${keyPoints[3]} in real-world scenarios.`;
+            } else if (lowerMessage.includes('how') || lowerMessage.includes('why')) {
+                return `The document explains this through a step-by-step approach. First, it introduces the basic concepts, then builds on them with examples, and finally shows how they apply to ${topic}. This method helps readers grasp complex ideas more easily.`;
+            } else {
+                return `That's a great question about ${topic}! Based on the document, this relates to ${keyPoints[Math.floor(Math.random() * keyPoints.length)]}. The author provides clear explanations and examples to help you understand this concept better.`;
+            }
         }
 
         // Quiz functionality
-        function generateQuizData() {
-            quizData = [
-                {
-                    question: "What is the primary focus of the document?",
-                    options: [
-                        "Historical analysis",
-                        "Technical implementation",
-                        "Theoretical framework",
-                        "Practical applications"
-                    ],
-                    correctAnswer: 1
-                },
-                {
-                    question: "Which methodology does the author primarily use?",
-                    options: [
-                        "Qualitative research",
-                        "Quantitative analysis",
-                        "Mixed methods approach",
-                        "Case study methodology"
-                    ],
-                    correctAnswer: 2
-                },
-                {
-                    question: "What conclusion does the document reach?",
-                    options: [
-                        "The hypothesis was partially supported",
-                        "The results were inconclusive",
-                        "The hypothesis was fully supported",
-                        "The hypothesis was rejected"
-                    ],
-                    correctAnswer: 2
-                },
-                {
-                    question: "What limitation does the author acknowledge?",
-                    options: [
-                        "Small sample size",
-                        "Limited time frame",
-                        "Geographic constraints",
-                        "All of the above"
-                    ],
-                    correctAnswer: 3
-                },
-                {
-                    question: "What future research is suggested?",
-                    options: [
-                        "Longitudinal studies",
-                        "Cross-cultural validation",
-                        "Larger scale implementation",
-                        "All mentioned options"
-                    ],
-                    correctAnswer: 3
-                }
-            ];
-            
-            document.getElementById('total-questions').textContent = quizData.length;
+        function resetQuiz() {
+            currentQuestionIndex = 0;
+            score = 0;
+            selectedOption = null;
+            answeredQuestions = [];
+            document.getElementById('quiz-score').textContent = '0';
+            document.getElementById('quiz-content').style.display = 'block';
+            document.getElementById('quiz-result').style.display = 'none';
+            loadQuestion();
         }
 
         function loadQuestion() {
@@ -1178,6 +1240,7 @@
             
             const question = quizData[currentQuestionIndex];
             document.getElementById('current-question').textContent = currentQuestionIndex + 1;
+            document.getElementById('total-questions').textContent = quizData.length;
             document.getElementById('quiz-question').textContent = question.question;
             
             const optionsContainer = document.getElementById('quiz-options');
@@ -1197,6 +1260,8 @@
         }
 
         function selectOption(index) {
+            if (answeredQuestions[currentQuestionIndex]) return; // Already answered
+            
             selectedOption = index;
             const options = document.querySelectorAll('.quiz-option');
             options.forEach((option, i) => {
@@ -1208,35 +1273,71 @@
         }
 
         function nextQuestion() {
-            if (selectedOption === null) {
+            if (selectedOption === null && !answeredQuestions[currentQuestionIndex]) {
                 alert('Please select an answer before continuing.');
                 return;
             }
             
-            if (selectedOption === quizData[currentQuestionIndex].correctAnswer) {
-                score++;
-                document.getElementById('quiz-score').textContent = score;
-            }
-            
-            const options = document.querySelectorAll('.quiz-option');
-            options.forEach((option, i) => {
-                if (i === quizData[currentQuestionIndex].correctAnswer) {
-                    option.classList.add('correct');
-                } else if (i === selectedOption && i !== quizData[currentQuestionIndex].correctAnswer) {
-                    option.classList.add('incorrect');
+            // Check if this question was already answered
+            if (!answeredQuestions[currentQuestionIndex]) {
+                const question = quizData[currentQuestionIndex];
+                const isCorrect = selectedOption === question.correctAnswer;
+                
+                if (isCorrect) {
+                    score++;
+                    document.getElementById('quiz-score').textContent = score;
                 }
-            });
-            
-            setTimeout(() => {
+                
+                // Mark as answered and store result
+                answeredQuestions[currentQuestionIndex] = {
+                    selected: selectedOption,
+                    correct: question.correctAnswer,
+                    isCorrect: isCorrect
+                };
+                
+                // Show correct/incorrect feedback
+                const options = document.querySelectorAll('.quiz-option');
+                options.forEach((option, i) => {
+                    if (i === question.correctAnswer) {
+                        option.classList.add('correct');
+                    } else if (i === selectedOption && !isCorrect) {
+                        option.classList.add('incorrect');
+                    }
+                });
+                
+                // Wait a moment before proceeding
+                setTimeout(() => {
+                    currentQuestionIndex++;
+                    loadQuestion();
+                }, 1500);
+            } else {
+                // Already answered, just move to next question
                 currentQuestionIndex++;
                 loadQuestion();
-            }, 1500);
+            }
         }
 
         function prevQuestion() {
             if (currentQuestionIndex > 0) {
                 currentQuestionIndex--;
                 loadQuestion();
+                
+                // Show previous answer if it exists
+                if (answeredQuestions[currentQuestionIndex]) {
+                    const answer = answeredQuestions[currentQuestionIndex];
+                    const options = document.querySelectorAll('.quiz-option');
+                    options.forEach((option, i) => {
+                        option.classList.remove('selected', 'correct', 'incorrect');
+                        if (i === answer.selected) {
+                            option.classList.add('selected');
+                        }
+                        if (i === answer.correct) {
+                            option.classList.add('correct');
+                        } else if (i === answer.selected && !answer.isCorrect) {
+                            option.classList.add('incorrect');
+                        }
+                    });
+                }
             }
         }
 
@@ -1247,13 +1348,7 @@
         }
 
         function restartQuiz() {
-            currentQuestionIndex = 0;
-            score = 0;
-            selectedOption = null;
-            document.getElementById('quiz-score').textContent = '0';
-            document.getElementById('quiz-content').style.display = 'block';
-            document.getElementById('quiz-result').style.display = 'none';
-            loadQuestion();
+            resetQuiz();
         }
 
         // Quiz event listeners
